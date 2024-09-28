@@ -1,7 +1,11 @@
 "use strict";
 
 const db = require("../db");
-const { BadRequestError, NotFoundError } = require("../expressError");
+const {
+  BadRequestError,
+  NotFoundError,
+  ExpressError,
+} = require("../expressError");
 const { sqlForPartialUpdate } = require("../helpers/sql");
 
 /** Related functions for companies. */
@@ -18,26 +22,21 @@ class Company {
 
   static async create({ handle, name, description, numEmployees, logoUrl }) {
     const duplicateCheck = await db.query(
-          `SELECT handle
+      `SELECT handle
            FROM companies
            WHERE handle = $1`,
-        [handle]);
+      [handle]
+    );
 
     if (duplicateCheck.rows[0])
       throw new BadRequestError(`Duplicate company: ${handle}`);
 
     const result = await db.query(
-          `INSERT INTO companies
+      `INSERT INTO companies
            (handle, name, description, num_employees, logo_url)
            VALUES ($1, $2, $3, $4, $5)
            RETURNING handle, name, description, num_employees AS "numEmployees", logo_url AS "logoUrl"`,
-        [
-          handle,
-          name,
-          description,
-          numEmployees,
-          logoUrl,
-        ],
+      [handle, name, description, numEmployees, logoUrl]
     );
     const company = result.rows[0];
 
@@ -47,17 +46,54 @@ class Company {
   /** Find all companies.
    *
    * Returns [{ handle, name, description, numEmployees, logoUrl }, ...]
+   * and if { name, minEmp, maxEmp } is passed,
+   * only the companies that satisfy the fields provided will be returned.
    * */
 
-  static async findAll() {
-    const companiesRes = await db.query(
-          `SELECT handle,
+  static async findAll({ name, minEmp, maxEmp }) {
+    let query = `SELECT handle,
                   name,
                   description,
                   num_employees AS "numEmployees",
                   logo_url AS "logoUrl"
-           FROM companies
-           ORDER BY name`);
+           FROM companies`;
+    let conditions = [];
+    let replacements = [];
+
+    if (name) {
+      conditions.push(`name ILIKE $${replacements.length + 1}`);
+      replacements.push(`%${name}%`);
+    }
+
+    if (minEmp != undefined) {
+      if (isNaN(minEmp)) {
+        throw new ExpressError(
+          "Please insert a valid number for minimum employees",
+          404
+        );
+      }
+      conditions.push(`num_employees >= $${replacements.length + 1}`);
+      replacements.push(minEmp);
+    }
+
+    if (maxEmp != undefined) {
+      if (isNaN(maxEmp)) {
+        throw new ExpressError(
+          "Please insert a valid number for maximum employees",
+          404
+        );
+      }
+      conditions.push(`num_employees <= $${replacements.length + 1}`);
+      replacements.push(maxEmp);
+    }
+
+    if (conditions.length > 0) {
+      query += " WHERE " + conditions.join(" AND ");
+    }
+
+    query += " ORDER BY name";
+
+    const companiesRes = await db.query(query, replacements);
     return companiesRes.rows;
   }
 
@@ -70,21 +106,43 @@ class Company {
    **/
 
   static async get(handle) {
-    const companyRes = await db.query(
-          `SELECT handle,
-                  name,
-                  description,
-                  num_employees AS "numEmployees",
-                  logo_url AS "logoUrl"
-           FROM companies
-           WHERE handle = $1`,
-        [handle]);
+    const fullCompanyRes = await db.query(
+      `SELECT 
+        companies.handle AS company_handle, 
+        companies.name AS company_name, 
+        companies.description AS company_description, 
+        jobs.id AS jobID, 
+        jobs.title, 
+        jobs.salary, 
+        jobs.equity 
+      FROM jobs
+      INNER JOIN companies 
+      ON jobs.company_handle = companies.handle
+      WHERE companies.handle =  $1`,
+      [handle]
+    );
+    if (fullCompanyRes.rows.length === 0)
+      throw new NotFoundError(`No company: ${handle}`);
 
-    const company = companyRes.rows[0];
+    const { company_handle, company_name, company_description } =
+      fullCompanyRes.rows[0];
 
-    if (!company) throw new NotFoundError(`No company: ${handle}`);
+    const jobs = fullCompanyRes.rows.map((row) => ({
+      id: row.jobID,
+      title: row.title,
+      salary: row.salary,
+      equity: row.equity,
+    }));
 
-    return company;
+    const companyInfo = {
+      company: {
+        handle: company_handle,
+        name: company_name,
+        description: company_description,
+      },
+      jobs,
+    };
+    return companyInfo;
   }
 
   /** Update company data with `data`.
@@ -100,12 +158,10 @@ class Company {
    */
 
   static async update(handle, data) {
-    const { setCols, values } = sqlForPartialUpdate(
-        data,
-        {
-          numEmployees: "num_employees",
-          logoUrl: "logo_url",
-        });
+    const { setCols, values } = sqlForPartialUpdate(data, {
+      numEmployees: "num_employees",
+      logoUrl: "logo_url",
+    });
     const handleVarIdx = "$" + (values.length + 1);
 
     const querySql = `UPDATE companies 
@@ -131,16 +187,29 @@ class Company {
 
   static async remove(handle) {
     const result = await db.query(
-          `DELETE
+      `DELETE
            FROM companies
            WHERE handle = $1
            RETURNING handle`,
-        [handle]);
+      [handle]
+    );
     const company = result.rows[0];
 
     if (!company) throw new NotFoundError(`No company: ${handle}`);
   }
 }
 
-
 module.exports = Company;
+
+// SELECT
+//         companies.handle AS companyHandle,
+//         companies.name AS companyName,
+//         companies.description AS companyDescription,
+//         jobs.id AS jobID,
+//         jobs.title,
+//         jobs.salary,
+//         jobs.equity
+//       FROM jobs
+//       INNER JOIN companies
+//       ON jobs.company_handle = companies.handle
+//       WHERE companies.handle =  'bauer-gallagher';
