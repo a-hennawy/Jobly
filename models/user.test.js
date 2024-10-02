@@ -214,8 +214,7 @@ describe("update", function () {
 describe("remove", function () {
   test("works", async function () {
     await User.remove("u1");
-    const res = await db.query(
-        "SELECT * FROM users WHERE username='u1'");
+    const res = await db.query("SELECT * FROM users WHERE username='u1'");
     expect(res.rows.length).toEqual(0);
   });
 
@@ -226,5 +225,35 @@ describe("remove", function () {
     } catch (err) {
       expect(err instanceof NotFoundError).toBeTruthy();
     }
+  });
+
+  describe("apply", () => {
+    test("works", async () => {
+      await User.apply("u1", 2);
+      const query = `SELECT username, job_id
+                     FROM applications
+                     WHERE username = $1
+                     AND job_id = $2`;
+      const res = await db.query(query, ["u1", 2]);
+      expect(res.rows[0]).toEqual({ username: "u1", job_id: 2 });
+    });
+
+    test("FAILS: if username is unavailable or wrong", async () => {
+      try {
+        await User.apply("wrong", 1);
+        fail();
+      } catch (err) {
+        expect(err instanceof NotFoundError).toBeTruthy();
+      }
+    });
+
+    test("FAILS: if job_id is unavailable or wrong", async () => {
+      try {
+        await User.apply("u1", 43);
+        fail();
+      } catch (err) {
+        expect(err instanceof NotFoundError).toBeTruthy();
+      }
+    });
   });
 });

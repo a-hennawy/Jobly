@@ -1,7 +1,11 @@
 "use strict";
 
 const db = require("../db.js");
-const { BadRequestError, NotFoundError } = require("../expressError");
+const {
+  BadRequestError,
+  NotFoundError,
+  ExpressError,
+} = require("../expressError");
 const Company = require("./company.js");
 const {
   commonBeforeAll,
@@ -35,15 +39,13 @@ describe("create", function () {
            FROM companies
            WHERE handle = 'new'`
     );
-    expect(result.rows).toEqual([
-      {
-        handle: "new",
-        name: "New",
-        description: "New Description",
-        num_employees: 1,
-        logo_url: "http://new.img",
-      },
-    ]);
+    expect(result.rows[0]).toEqual({
+      handle: "new",
+      name: "New",
+      description: "New Description",
+      num_employees: 1,
+      logo_url: "http://new.img",
+    });
   });
 
   test("bad request with dupe", async function () {
@@ -61,7 +63,7 @@ describe("create", function () {
 
 describe("findAll", function () {
   test("works: no filter", async function () {
-    let companies = await Company.findAll();
+    let companies = await Company.findAll({});
     expect(companies).toEqual([
       {
         handle: "c1",
@@ -86,6 +88,45 @@ describe("findAll", function () {
       },
     ]);
   });
+
+  test("WORKS: with filter", async () => {
+    let companies = await Company.findAll({ name: "C", maxEmp: 2 });
+
+    expect(companies).toEqual([
+      {
+        handle: "c1",
+        name: "C1",
+        description: "Desc1",
+        numEmployees: 1,
+        logoUrl: "http://c1.img",
+      },
+      {
+        handle: "c2",
+        name: "C2",
+        description: "Desc2",
+        numEmployees: 2,
+        logoUrl: "http://c2.img",
+      },
+    ]);
+  });
+
+  test("ERROR 404: if maxEmp filter is NaN", async () => {
+    try {
+      await Company.findAll({ maxEmp: "one" });
+      fail();
+    } catch (e) {
+      expect(e instanceof ExpressError).toBeTruthy();
+    }
+  });
+
+  test("ERROR 404: if minEmp filter is NaN", async () => {
+    try {
+      await Company.findAll({ minEmp: "one" });
+      fail();
+    } catch (e) {
+      expect(e instanceof ExpressError).toBeTruthy();
+    }
+  });
 });
 
 /************************************** get */
@@ -94,11 +135,14 @@ describe("get", function () {
   test("works", async function () {
     let company = await Company.get("c1");
     expect(company).toEqual({
-      handle: "c1",
-      name: "C1",
-      description: "Desc1",
-      numEmployees: 1,
-      logoUrl: "http://c1.img",
+      company: {
+        handle: "c1",
+        name: "C1",
+        description: "Desc1",
+        numEmployees: 1,
+        logoUrl: "http://c1.img",
+      },
+      jobs: [{ id: 1, title: "j1", salary: 180000, equity: 0 }],
     });
   });
 

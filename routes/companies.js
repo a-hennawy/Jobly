@@ -55,8 +55,8 @@ router.get("/", async function (req, res, next) {
     const { name, minEmp, maxEmp } = req.query;
     let filterObj = {
       name: name ? String(name) : undefined,
-      minEmp: minEmp ? parseInt(minEmp, 10) : undefined,
-      maxEmp: maxEmp ? parseInt(maxEmp, 10) : undefined,
+      minEmp: minEmp ? minEmp : undefined,
+      maxEmp: maxEmp ? maxEmp : undefined,
     };
     const companies = await Company.findAll(filterObj);
     return res.json({ companies });
@@ -67,7 +67,7 @@ router.get("/", async function (req, res, next) {
 
 /** GET /[handle]  =>  { company }
  *
- *  Company is { handle, name, description, numEmployees, logoUrl, jobs }
+ *  Company is { handle, name, description, numEmployees, logoUrl, jobs[] }
  *   where jobs is [{ id, title, salary, equity }, ...]
  *
  * Authorization required: none
@@ -76,7 +76,7 @@ router.get("/", async function (req, res, next) {
 router.get("/:handle", async function (req, res, next) {
   try {
     const company = await Company.get(req.params.handle);
-    return res.json({ company });
+    return res.json(company);
   } catch (err) {
     return next(err);
   }

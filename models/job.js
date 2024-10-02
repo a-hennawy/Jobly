@@ -81,7 +81,7 @@ class Job {
       conditions.push(`equity > 0`);
     }
 
-    // console.log(conditions);
+    console.log(conditions);
     if (conditions.length > 0) {
       query += " WHERE " + conditions.join(" AND ");
     }
@@ -144,6 +144,7 @@ class Job {
       throw new NotFoundError(`Sorry cannot find job with id of: ${id}`);
     }
     updatedJob.equity = parseFloat(updatedJob.equity);
+    console.log("Models PATCH".bgBlue, updatedJob);
     return updatedJob;
   }
 
@@ -169,6 +170,7 @@ class Job {
         `,
       [id]
     );
+    return result.rows[0];
   }
 }
 

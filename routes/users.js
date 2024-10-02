@@ -19,24 +19,24 @@ const userAuth = require("../schemas/userAuth.json");
 
 const router = express.Router();
 
-router.post("/login", async (req, res, next) => {
-  try {
-    const { username, password } = req.body;
-    const validator = jsonschema.validate(req.body, userAuth);
-    if (!validator.valid) {
-      const errs = validator.errors.map((e) => e.stack);
-      throw new BadRequestError(errs);
-    }
+// router.post("/login", async (req, res, next) => {
+//   try {
+//     const { username, password } = req.body;
+//     const validator = jsonschema.validate(req.body, userAuth);
+//     if (!validator.valid) {
+//       const errs = validator.errors.map((e) => e.stack);
+//       throw new BadRequestError(errs);
+//     }
 
-    const user = await User.authenticate(username, password);
-    if (user) {
-      const token = createToken(user);
-      return res.json({ user, token });
-    }
-  } catch (err) {
-    return next(err);
-  }
-});
+//     const user = await User.authenticate(username, password);
+//     if (user) {
+//       const token = createToken(user);
+//       return res.json({ user, token });
+//     }
+//   } catch (err) {
+//     return next(err);
+//   }
+// });
 
 /** POST / { user }  => { user, token }
  *

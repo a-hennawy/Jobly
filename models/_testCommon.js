@@ -2,14 +2,19 @@ const bcrypt = require("bcrypt");
 
 const db = require("../db.js");
 const { BCRYPT_WORK_FACTOR } = require("../config");
+require("colors");
 
 async function commonBeforeAll() {
   // noinspection SqlWithoutWhere
-  await db.query("DELETE FROM companies");
+  // await db.query("DELETE FROM companies");
+  await db.query("TRUNCATE TABLE companies RESTART IDENTITY CASCADE");
   // noinspection SqlWithoutWhere
-  await db.query("DELETE FROM users");
+  // await db.query("DELETE FROM users");
+  await db.query("TRUNCATE TABLE users RESTART IDENTITY CASCADE");
   // noinspection SqlWithoutWhere
   // await db.query("DELETE FROM jobs");
+
+  // await db.query("DELETE FROM applications");
   await db.query("TRUNCATE TABLE jobs RESTART IDENTITY CASCADE");
 
   await db.query(`
@@ -33,6 +38,7 @@ async function commonBeforeAll() {
       await bcrypt.hash("password2", BCRYPT_WORK_FACTOR),
     ]
   );
+
   await db.query(
     `
         INSERT INTO jobs(title, 

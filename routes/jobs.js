@@ -13,6 +13,7 @@ const jobNewSchema = require("../schemas/jobNew.json");
 const jobUpdateSchema = require("../schemas/jobUpdate.json");
 
 const router = new express.Router();
+require("colors");
 
 router.post("/", ensureIsAdmin, async (req, res, next) => {
   try {
@@ -34,10 +35,12 @@ router.get("/", async (req, res, next) => {
     const { title, minSalary, hasEquity } = req.query;
     let filterObj = {
       title: title ? String(title) : undefined,
-      minSalary: minSalary ? parseInt(minSalary, 10) : undefined,
+      minSalary: minSalary ? minSalary : undefined,
       hasEquity:
         hasEquity === "true" ? true : hasEquity === "false" ? false : undefined,
     };
+
+    // console.log("filter object".yellow);
 
     const jobs = await Job.findAll(filterObj);
 
@@ -64,8 +67,8 @@ router.patch("/:id", ensureIsAdmin, async (req, res, next) => {
       throw new BadRequestError(errs);
     }
 
-    const job = await Job.update(req.params.id);
-
+    const job = await Job.update(req.params.id, req.body);
+    console.log("Models ROUTE".bgMagenta, job);
     return res.status(201).json({ job });
   } catch (err) {
     return next(err);
@@ -75,8 +78,9 @@ router.patch("/:id", ensureIsAdmin, async (req, res, next) => {
 router.delete("/:id", ensureIsAdmin, async (req, res, next) => {
   try {
     const jobRemove = await Job.remove(req.params.id);
+    console.log(jobRemove);
     return res.json({
-      removed: req.params.id,
+      removed: `job with id:${jobRemove.id}, title: ${jobRemove.title}`,
     });
   } catch (err) {
     return next(err);

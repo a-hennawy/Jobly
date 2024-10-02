@@ -3,14 +3,20 @@
 const db = require("../db.js");
 const User = require("../models/user");
 const Company = require("../models/company");
+const Job = require("../models/job.js");
 const { createToken } = require("../helpers/tokens");
 
 async function commonBeforeAll() {
   // noinspection SqlWithoutWhere
-  await db.query("DELETE FROM users");
+  // await db.query("DELETE FROM users");
+  await db.query("TRUNCATE TABLE users RESTART IDENTITY CASCADE");
   // noinspection SqlWithoutWhere
-  await db.query("DELETE FROM companies");
+  // await db.query("DELETE FROM companies");
+  await db.query("TRUNCATE TABLE companies RESTART IDENTITY CASCADE");
 
+  await db.query("TRUNCATE TABLE jobs RESTART IDENTITY CASCADE");
+
+  /**Populating companies table*/
   await Company.create({
     handle: "c1",
     name: "C1",
@@ -33,6 +39,22 @@ async function commonBeforeAll() {
     logoUrl: "http://c3.img",
   });
 
+  /**Populating jobs table*/
+  await Job.create({
+    title: "j1",
+    salary: 180000,
+    equity: 0,
+    company_handle: "c1",
+  });
+
+  await Job.create({
+    title: "j2",
+    salary: 157000,
+    equity: 0.06,
+    company_handle: "c1",
+  });
+
+  /**Populating users table*/
   await User.register({
     username: "u1",
     firstName: "U1F",
@@ -57,6 +79,7 @@ async function commonBeforeAll() {
     password: "password3",
     isAdmin: false,
   });
+  await User.apply("u1", 1);
 }
 
 async function commonBeforeEach() {

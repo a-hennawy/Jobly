@@ -222,11 +222,11 @@ class User {
     const jobResult = jobCheck.rows.length;
 
     if (!userResult) {
-      throw new NotFoundError("One of the entries are not found");
+      throw new NotFoundError(`username: ${username} not found`);
     }
 
     if (!jobResult) {
-      throw new NotFoundError("One of the entries are not found");
+      throw new NotFoundError(`job_id: ${jobID} not found`);
     }
 
     let result = await db.query(

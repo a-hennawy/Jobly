@@ -21,8 +21,8 @@ function authenticateJWT(req, res, next) {
       const token = authHeader.replace(/^[Bb]earer /, "").trim();
       res.locals.user = jwt.verify(token, SECRET_KEY);
     }
-    console.log("-----------Successfully verified-----------");
-    console.group(res.locals);
+    // console.log("-----------Successfully verified-----------");
+    // console.group(res.locals);
     return next();
   } catch (err) {
     return next();
@@ -32,11 +32,17 @@ function authenticateJWT(req, res, next) {
 /** Middleware to use when they must be logged in.
  *
  * If not, raises Unauthorized.
+ * A new feature is also added, which doesn't allow any access to users unless the req.params user matches the res.locals user.
+ * If the res.locals user is an admin, it will return next()
  */
 
 function ensureLoggedIn(req, res, next) {
   try {
-    if (!res.locals.user) throw new UnauthorizedError();
+    // console.log(res.locals.user);
+    if (!res.locals.user) {
+      throw new UnauthorizedError();
+    }
+    if (res.locals.user.isAdmin) return next();
     if (req.params.username) {
       if (req.params.username !== res.locals.user.username) {
         throw new UnauthorizedError();

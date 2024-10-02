@@ -109,14 +109,16 @@ class Company {
     const fullCompanyRes = await db.query(
       `SELECT 
         companies.handle AS company_handle, 
-        companies.name AS company_name, 
+        companies.name AS company_name,
+        companies.num_employees,
         companies.description AS company_description, 
-        jobs.id AS jobID, 
+        companies.logo_url AS company_logo,
+        jobs.id AS job_id, 
         jobs.title, 
         jobs.salary, 
         jobs.equity 
-      FROM jobs
-      INNER JOIN companies 
+      FROM companies
+      LEFT JOIN jobs
       ON jobs.company_handle = companies.handle
       WHERE companies.handle =  $1`,
       [handle]
@@ -124,24 +126,35 @@ class Company {
     if (fullCompanyRes.rows.length === 0)
       throw new NotFoundError(`No company: ${handle}`);
 
-    const { company_handle, company_name, company_description } =
-      fullCompanyRes.rows[0];
+    // console.log(fullCompanyRes.rows);
+    const {
+      company_handle,
+      company_name,
+      num_employees,
+      company_description,
+      company_logo,
+    } = fullCompanyRes.rows[0];
 
-    const jobs = fullCompanyRes.rows.map((row) => ({
-      id: row.jobID,
-      title: row.title,
-      salary: row.salary,
-      equity: row.equity,
-    }));
+    const jobs = fullCompanyRes.rows
+      .map((row) => ({
+        id: row.job_id,
+        title: row.title,
+        salary: row.salary,
+        equity: row.equity !== null ? parseFloat(row.equity) : null,
+      }))
+      .filter((job) => job.id !== null); //this filters out jobs with no valid id
 
     const companyInfo = {
       company: {
         handle: company_handle,
         name: company_name,
         description: company_description,
+        numEmployees: num_employees,
+        logoUrl: company_logo,
       },
       jobs,
     };
+    console.log(companyInfo);
     return companyInfo;
   }
 
@@ -200,16 +213,3 @@ class Company {
 }
 
 module.exports = Company;
-
-// SELECT
-//         companies.handle AS companyHandle,
-//         companies.name AS companyName,
-//         companies.description AS companyDescription,
-//         jobs.id AS jobID,
-//         jobs.title,
-//         jobs.salary,
-//         jobs.equity
-//       FROM jobs
-//       INNER JOIN companies
-//       ON jobs.company_handle = companies.handle
-//       WHERE companies.handle =  'bauer-gallagher';
